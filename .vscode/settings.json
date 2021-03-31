@@ -1,0 +1,10 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "javascript.implicitProjectConfig.experimentalDecorators": true,
+  "eslint.enable": true,
+  "cSpell.words": [
+    "mobilenet"
+  ],
+  "eslint.format.enable": true,
+  "editor.formatOnSave": true
+}
