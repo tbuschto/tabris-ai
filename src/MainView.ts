@@ -1,4 +1,4 @@
-import {Stack, CameraView, TextView} from 'tabris';
+import {Stack, CameraView, TextView, ActivityIndicator} from 'tabris';
 import {component, bindAll, inject, shared} from 'tabris-decorators';
 import {MainViewModel} from './MainViewModel';
 
@@ -8,6 +8,7 @@ export class MainView extends Stack {
 
   @inject
   @bindAll({
+    working: '>> ActivityIndicator.visible',
     activeCamera: '>> CameraView.camera',
     status: '>> #status.text'
   })
@@ -20,10 +21,10 @@ export class MainView extends Stack {
         CameraView({
           stretchX: true,
           scaleMode: 'fill',
-          onBoundsChanged: ({target, value}) => target.height = value.width,
-          onTap: () => this.model.classifyImage()
+          onBoundsChanged: ({target, value}) => target.height = value.width
         }),
-        TextView({id: 'status'})
+        TextView({id: 'status'}),
+        ActivityIndicator()
       );
   }
 
