@@ -444,7 +444,7 @@
       }
     ],
     "import/default": "off",
-    "import/no-relative-parent-imports": "warn",
+    "import/no-relative-parent-imports": "off",
     "import/named": "warn",
     "import/no-useless-path-segments": "warn",
     "import/no-cycle": "warn",

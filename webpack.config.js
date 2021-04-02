@@ -1,14 +1,17 @@
 require('webpack');
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: {
+    index: './src/index.ts',
+    worker: './src-worker/index.ts'
+  },
   externals: ['tabris', 'tabris-decorators'],
   plugins: [],
   devtool: 'source-map',
   mode: 'development', // Preserve class names needed in tabris-decorators
   output: {
     libraryTarget: 'commonjs2',
-    filename: "index.js",
+    filename: "[name].js",
     path: __dirname + '/dist',
     devtoolModuleFilenameTemplate: '../[resource-path]',
     devtoolFallbackModuleFilenameTemplate: '[absolute-resource-path]'

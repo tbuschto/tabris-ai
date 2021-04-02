@@ -1,8 +1,7 @@
 import {Camera, permission, device} from 'tabris';
 import {inject, property, shared} from 'tabris-decorators';
-import * as tf from '@tensorflow/tfjs';
-import * as mobilenet from '@tensorflow-models/mobilenet';
-import {ImageReader} from './ImageReader';
+import {MobileNetWorker} from './MobileNetWorker';
+import {Classification} from '../src-common/types';
 
 @shared
 export class MainViewModel {
@@ -11,39 +10,33 @@ export class MainViewModel {
   @property status: string;
   @property availableCameras: Camera[];
 
-  private mobilenet: mobilenet.MobileNet;
-  private working = false;
-
   constructor(
-    @inject private imageReader: ImageReader
+    @inject private worker: MobileNetWorker
   ) {
     this.selectCamera(0);
-    this.initTensorFlow().catch(ex => this.status = ex.toString());
+    this.init().catch(ex => console.error(ex));
   }
 
   async classifyImage() {
-    if (this.mobilenet && !this.working) {
-      const start = Date.now();
-      this.working = true;
-      try {
-        const image = await this.imageReader.getImageData(this.activeCamera);
-        const imageRead = Date.now();
-        const results = await this.mobilenet.classify(image);
-        console.info('Image processing time:', imageRead - start, 'ms');
-        console.info('Image classification time:', Date.now() - imageRead, 'ms');
-        console.info(results);
-        this.showResults(results);
-      } catch (ex) {
-        this.status = ex.message;
-        console.error(ex);
-      } finally {
-        this.working = false;
-      }
-      void this.classifyImage();
+    if (!this.worker.isReady()) {
+      console.warn('not ready');
+      return;
     }
+    const {image} = await this.activeCamera.captureImage();
+    this.status = 'working';
+    const timestamp = Date.now();
+    const results = await this.worker.classify(image);
+    console.info(Date.now() - timestamp, 'ms');
+    this.showResults(results);
   }
 
-  private showResults(results: Array<{ className: string, probability: number }>) {
+  private async init() {
+    this.status = 'initializing';
+    await this.worker.ready();
+    this.status = 'ready';
+  }
+
+  private showResults(results: Classification[]) {
     if (results[0].probability > 0.5) {
       this.status = `This is a ${results[0].className.split(',')[0]}`;
     } else {
@@ -54,18 +47,13 @@ export class MainViewModel {
   private selectCamera(index: number) {
     this.activeCamera?.set({active: false});
     permission.withAuthorization('camera',
-      () => this.activeCamera = device.cameras[index].set({active: true}),
+      () => this.activeCamera = device.cameras[index].set({
+        active: true,
+        captureResolution: {width: 1000, height: 1000}
+      }),
       () => this.status = '"camera" permission is required.',
       ex => this.status = ex.message
     );
-  }
-
-  private async initTensorFlow() {
-    this.status = 'Initializing...';
-    await tf.setBackend('cpu');
-    this.mobilenet = await mobilenet.load();
-    this.status = 'Looking at image...';
-    void this.classifyImage();
   }
 
 }

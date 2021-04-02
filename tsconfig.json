@@ -24,8 +24,7 @@
   },
   "include": [
     "./src/**/*.ts",
-    "./src/**/*.tsx",
-    "./src/**/*.js",
-    "./src/**/*.jsx"
+    "./src-worker/**/*.ts",
+    "src-common/**/*.ts"
   ]
 }
