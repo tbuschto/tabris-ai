@@ -1,4 +1,4 @@
-import {EventObject, Listeners} from 'tabris';
+import {ChangeListeners, EventObject, Listeners} from 'tabris';
 import {event, injectable} from 'tabris-decorators';
 import {MSG_ERROR, MSG_LOG, MSG_READY, MSG_RESULTS} from '../src-common/const';
 import {Classification, WorkerMessage} from '../src-common/types';
@@ -9,6 +9,7 @@ let instanceCounter = 0;
 export class MobileNetWorker {
 
   @event onReady: Listeners<MobileNetWorkerEvent>;
+  @event onBusyChanged: ChangeListeners<MobileNetWorker, 'busy'>;
   @event onResults: Listeners<MobileNetWorkerResultsEvent>;
   @event onError: Listeners<MobileNetWorkerEvent>;
   @event onLog: Listeners<MobileNetWorkerLogEvent>;
@@ -20,6 +21,7 @@ export class MobileNetWorker {
   private _busy = false;
 
   constructor() {
+    this.log('Loading...');
     this.self.onmessage = this.handleMessage.bind(this);
     this.self.onerror = this.handleError.bind(this);
     this.self.onmessageerror = this.handleError.bind(this);
@@ -29,6 +31,10 @@ export class MobileNetWorker {
 
   isReady() {
     return this._ready;
+  }
+
+  get busy() {
+    return this._busy;
   }
 
   async ready(): Promise<void> {
@@ -47,6 +53,7 @@ export class MobileNetWorker {
       throw new Error('Worker is busy');
     }
     this._busy = true;
+    this.onBusyChanged.trigger({value: this._busy});
     try {
       const arrayBuffer = await encodedImage.arrayBuffer();
       const promise = Promise.race([
@@ -63,6 +70,7 @@ export class MobileNetWorker {
       throw new Error('Unexpected event ' + ev);
     } finally {
       this._busy = false;
+      this.onBusyChanged.trigger({value: this._busy});
     }
   }
 

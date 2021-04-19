@@ -2,6 +2,7 @@ import {Camera, permission, device, ChangeListeners} from 'tabris';
 import {event, inject, property, shared} from 'tabris-decorators';
 import {MobileNetWorker} from './MobileNetWorker';
 import {resToString} from './util';
+import {WorkerPool} from './WorkerPool';
 import {Classification} from '../src-common/types';
 
 const LIKELY = 0.55;
@@ -23,7 +24,7 @@ export class MainViewModel {
   @event onResolutionChanged: ChangeListeners<MainViewModel, 'resolution'>;
 
   constructor(
-    @inject private worker: MobileNetWorker
+    @inject private workers: WorkerPool
   ) {
     this.onResolutionChanged(() => this.handleResolutionChanged());
     this.onCameraChanged(() => this.handleCameraChanged());
@@ -32,21 +33,24 @@ export class MainViewModel {
 
   private async init() {
     this.status = 'initializing';
-    await this.worker.ready();
+    await this.workers.ready();
     this.camera = this.availableCameras[0];
     this.status = 'working';
-    this.scheduleClassifyImage();
+    for (let i = 0; i < this.workers.length; i++) {
+      this.scheduleClassifyImage(this.workers.getWorker(i));
+      await new Promise(cb => setTimeout(cb, 4000 / this.workers.length));
+    }
   }
 
-  private scheduleClassifyImage() {
+  private scheduleClassifyImage(worker: MobileNetWorker) {
     setTimeout(
-      () => this.classifyImage().catch(ex => this.handleClassificationError(ex)),
+      () => this.classifyImage(worker).catch(ex => this.handleClassificationError(ex)),
       300
     );
   }
 
-  private async classifyImage() {
-    if (!this.worker.isReady()) {
+  private async classifyImage(worker: MobileNetWorker) {
+    if (!worker.isReady()) {
       console.warn('not ready');
       return;
     }
@@ -56,10 +60,12 @@ export class MainViewModel {
     const timestamp = Date.now();
     const {image} = await this.camera.captureImage();
     this.working = true;
-    const results = await this.worker.classify(image);
+    const results = await worker.classify(image);
     this.working = false;
+    // TODO: ignore outdated classifications
     this.showResults(results, Date.now() - timestamp);
-    this.scheduleClassifyImage();
+    // TODO: schedule classification so results arrive at roughly stable intervals
+    this.scheduleClassifyImage(worker);
   }
 
   private showResults(results: Classification[], time: number) {
@@ -113,7 +119,6 @@ export class MainViewModel {
   private handleClassificationError(ex: Error) {
     console.error('Classification error:', ex);
     this.status = `Classification error ${ex.message}`;
-    this.scheduleClassifyImage();
   }
 
 }

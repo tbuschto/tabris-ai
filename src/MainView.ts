@@ -1,4 +1,4 @@
-import {Stack, CameraView, TextView, ActivityIndicator} from 'tabris';
+import {Stack, CameraView, TextView} from 'tabris';
 import {component, bindAll, inject, shared, ItemPicker} from 'tabris-decorators';
 import {MainViewModel} from './MainViewModel';
 
@@ -13,7 +13,6 @@ export class MainView extends Stack {
     availableResolutions: '>> #resolution.items',
     resolution: '#resolution.selection',
     activeCamera: '>> CameraView.camera',
-    working: '>> ActivityIndicator.visible',
     status: '>> #status.text'
   })
   model: MainViewModel;
@@ -33,8 +32,7 @@ export class MainView extends Stack {
           scaleMode: 'fill',
           onBoundsChanged: ({target, value}) => target.height = value.width
         }),
-        TextView({id: 'status'}),
-        ActivityIndicator()
+        TextView({id: 'status'})
       );
   }
 
