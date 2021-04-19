@@ -1,5 +1,5 @@
 import {Stack, CameraView, TextView, ActivityIndicator} from 'tabris';
-import {component, bindAll, inject, shared} from 'tabris-decorators';
+import {component, bindAll, inject, shared, ItemPicker} from 'tabris-decorators';
 import {MainViewModel} from './MainViewModel';
 
 @shared
@@ -7,9 +7,13 @@ import {MainViewModel} from './MainViewModel';
 export class MainView extends Stack {
 
   @inject
-  @bindAll({
-    working: '>> ActivityIndicator.visible',
+  @bindAll<MainViewModel>({
+    availableCameras: '>> #camera.items',
+    camera: '#camera.selection',
+    availableResolutions: '>> #resolution.items',
+    resolution: '#resolution.selection',
     activeCamera: '>> CameraView.camera',
+    working: '>> ActivityIndicator.visible',
     status: '>> #status.text'
   })
   model: MainViewModel;
@@ -18,6 +22,12 @@ export class MainView extends Stack {
     super({padding: 16, spacing: 16, alignment: 'stretchX'});
     this
       .append(
+        ItemPicker({id: 'camera', message: 'Camera', textSource: 'position'}),
+        ItemPicker({
+          id: 'resolution',
+          message: 'Resolution',
+          textSource: 'width'
+        }),
         CameraView({
           stretchX: true,
           scaleMode: 'fill',

@@ -1,6 +1,7 @@
-import {Camera, permission, device} from 'tabris';
-import {inject, property, shared} from 'tabris-decorators';
+import {Camera, permission, device, ChangeListeners} from 'tabris';
+import {event, inject, property, shared} from 'tabris-decorators';
 import {MobileNetWorker} from './MobileNetWorker';
+import {resToString} from './util';
 import {Classification} from '../src-common/types';
 
 const LIKELY = 0.55;
@@ -10,21 +11,29 @@ const NO_WAY = 0.1;
 @shared
 export class MainViewModel {
 
+  @property camera: Camera;
   @property activeCamera: Camera;
+  @property resolution: {width: number, height: number};
   @property status: string;
   @property working: boolean = false;
-  @property availableCameras: Camera[];
+  @property availableCameras: Camera[] = device.cameras;
+  @property availableResolutions: Array<{width: number, height: number}>;
+
+  @event onCameraChanged: ChangeListeners<MainViewModel, 'camera'>;
+  @event onResolutionChanged: ChangeListeners<MainViewModel, 'resolution'>;
 
   constructor(
     @inject private worker: MobileNetWorker
   ) {
+    this.onResolutionChanged(() => this.handleResolutionChanged());
+    this.onCameraChanged(() => this.handleCameraChanged());
     this.init().catch(ex => console.error(ex));
   }
 
   private async init() {
     this.status = 'initializing';
     await this.worker.ready();
-    this.selectCamera(0);
+    this.camera = this.availableCameras[0];
     this.status = 'working';
     this.scheduleClassifyImage();
   }
@@ -41,20 +50,19 @@ export class MainViewModel {
       console.warn('not ready');
       return;
     }
-    if (!this.activeCamera.active) {
-      this.activeCamera.active = true;
+    if (!this.camera.active) {
+      this.camera.active = true;
     }
     const timestamp = Date.now();
-    const {image} = await this.activeCamera.captureImage();
+    const {image} = await this.camera.captureImage();
     this.working = true;
     const results = await this.worker.classify(image);
     this.working = false;
-    console.info('Classification in ' + (Date.now() - timestamp) +  'ms');
-    this.showResults(results);
+    this.showResults(results, Date.now() - timestamp);
     this.scheduleClassifyImage();
   }
 
-  private showResults(results: Classification[]) {
+  private showResults(results: Classification[], time: number) {
     console.info(results);
     const text: string[] = [];
     if (results[0].probability > LIKELY) {
@@ -74,6 +82,7 @@ export class MainViewModel {
     } else {
       text.push('I can\'t see a thing.');
     }
+    text.push(` (${Math.round(time / 100) / 10}s)`);
     this.status = text.join('');
   }
 
@@ -83,13 +92,19 @@ export class MainViewModel {
     return article + ' ' + name;
   }
 
-  private selectCamera(index: number) {
-    this.activeCamera?.set({active: false});
+  private handleResolutionChanged() {
+    console.info(`Resolution: ${resToString(this.resolution)}`);
+    this.camera.captureResolution = this.resolution;
+  }
+
+  private handleCameraChanged() {
     permission.withAuthorization('camera',
-      () => this.activeCamera = device.cameras[index].set({
-        active: true,
-        captureResolution: {width: 1000, height: 1000}
-      }),
+      () => {
+        this.activeCamera = this.camera?.set({active: false});
+        this.availableResolutions = this.camera?.availableCaptureResolutions
+          .sort((resA, resB) => resA.width - resB.width);
+        this.resolution = this.availableResolutions?.find(res => res.width > 1000);
+      },
       () => this.status = '"camera" permission is required.',
       ex => this.status = ex.message
     );

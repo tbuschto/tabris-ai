@@ -6,5 +6,6 @@
     "mobilenet"
   ],
   "eslint.format.enable": true,
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "git.ignoreLimitWarning": true
 }
